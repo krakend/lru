@@ -5,7 +5,7 @@ name = "go"
 enabled = true
 
   [analyzers.meta]
-  import_root = "github.com/krakendio/lru"
+  import_root = "github.com/krakend/lru"
 
 [[transformers]]
 name = "gofmt"

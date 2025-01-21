@@ -1,3 +1,3 @@
-module github.com/krakendio/lru
+module github.com/krakend/lru
 
 go 1.22

@@ -6,7 +6,7 @@ A simple LRU cache implementation that also evicts elements when an specific siz
 ### Usage
 
 ```
-go get github.com/krakendio/lru
+go get github.com/krakend/lru
 ```
 
 ```go
