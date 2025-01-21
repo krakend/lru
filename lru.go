@@ -7,9 +7,9 @@ import (
 )
 
 type LruCache struct {
-	maxItems uint64
-	maxSize  uint64
-	current  uint64
+	maxItems  uint64
+	maxSize   uint64
+	inUseSize uint64
 
 	mu sync.RWMutex
 
@@ -74,12 +74,12 @@ func (c *LruCache) Set(key string, resp []byte) {
 	// Add new item
 	c.items[key] = c.evictList.PushFront(&entry{key, resp})
 
-	c.current += uint64(len(resp))
+	c.inUseSize += uint64(len(resp))
 	// Verify size not exceeded and evict if necessary
-	for c.current > c.maxSize || uint64(len(c.items)) > c.maxItems {
+	for c.inUseSize > c.maxSize || uint64(len(c.items)) > c.maxItems {
 		if e := c.evictList.Back(); e != nil {
 			delete(c.items, e.Value.(*entry).key)
-			c.current -= uint64(len(e.Value.(*entry).value))
+			c.inUseSize -= uint64(len(e.Value.(*entry).value))
 			c.evictList.Remove(e)
 		}
 	}
@@ -91,7 +91,7 @@ func (c *LruCache) Delete(key string) {
 
 	if ent, ok := c.items[key]; ok {
 		delete(c.items, ent.Value.(*entry).key)
-		c.current -= uint64(len(ent.Value.(*entry).value))
+		c.inUseSize -= uint64(len(ent.Value.(*entry).value))
 		c.evictList.Remove(ent)
 	}
 
