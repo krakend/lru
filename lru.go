@@ -78,9 +78,7 @@ func (c *LruCache) Set(key string, resp []byte) {
 	// Verify size not exceeded and evict if necessary
 	for c.inUseSize > c.maxSize || uint64(len(c.items)) > c.maxItems {
 		if e := c.evictList.Back(); e != nil {
-			delete(c.items, e.Value.(*entry).key)
-			c.inUseSize -= uint64(len(e.Value.(*entry).value))
-			c.evictList.Remove(e)
+			c.release(e)
 		}
 	}
 	c.mu.Unlock()
@@ -90,10 +88,19 @@ func (c *LruCache) Delete(key string) {
 	c.mu.Lock()
 
 	if ent, ok := c.items[key]; ok {
-		delete(c.items, ent.Value.(*entry).key)
-		c.inUseSize -= uint64(len(ent.Value.(*entry).value))
-		c.evictList.Remove(ent)
+		c.release(ent)
 	}
 
 	c.mu.Unlock()
+}
+
+func (c *LruCache) release(element *list.Element) {
+	if element == nil {
+		return
+	}
+
+	delete(c.items, element.Value.(*entry).key)
+	c.inUseSize -= uint64(len(element.Value.(*entry).value))
+	c.evictList.Remove(element)
+	element.Value = nil
 }
