@@ -63,23 +63,27 @@ func (c *LruCache) Set(key string, resp []byte) {
 
 	c.mu.Lock()
 
-	// Check for existing item
 	if ent, ok := c.items[key]; ok {
+		// Existing item: swap the value and keep inUseSize in step with it,
+		// so a later release subtracts exactly what was added.
 		c.evictList.MoveToFront(ent)
-		ent.Value.(*entry).value = resp
-		c.mu.Unlock()
-		return
+		e := ent.Value.(*entry)
+		c.inUseSize = c.inUseSize - uint64(len(e.value)) + uint64(len(resp))
+		e.value = resp
+	} else {
+		c.items[key] = c.evictList.PushFront(&entry{key, resp})
+		c.inUseSize += uint64(len(resp))
 	}
 
-	// Add new item
-	c.items[key] = c.evictList.PushFront(&entry{key, resp})
-
-	c.inUseSize += uint64(len(resp))
-	// Verify size not exceeded and evict if necessary
+	// Verify size not exceeded and evict if necessary. Stop once the list
+	// is empty, so a counter that drifted can never spin with the lock held.
 	for c.inUseSize > c.maxSize || uint64(len(c.items)) > c.maxItems {
-		if e := c.evictList.Back(); e != nil {
-			c.release(e)
+		e := c.evictList.Back()
+		if e == nil {
+			c.inUseSize = 0
+			break
 		}
+		c.release(e)
 	}
 	c.mu.Unlock()
 }
